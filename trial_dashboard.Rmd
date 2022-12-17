@@ -1,0 +1,391 @@
+---
+title: "statistical_computing_project4"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(DT)
+library(jsonlite)
+library(httr)
+library(here)
+library(purrr)
+library(tidyverse)
+library(tidycensus)
+census_api_key("dbd69da6dd6f0e9d267b0cbdd2168231ea942714",overwrite=TRUE, install = TRUE)
+readRenviron("~/.Renviron")
+
+racevars <- c(White = "P2_005N", 
+              Black = "P2_006N", 
+              Asian = "P2_008N", 
+              Hispanic = "P2_002N")
+
+if(!file.exists(here("data","bal_population.RDS"))){
+  baltimore <- get_decennial(
+    geography = "tract",
+    variables = racevars,
+    state = '24',
+    county = '005',
+    geometry = TRUE,
+    summary_var = "P2_001N",
+    year = 2020
+  )
+  walk(.x = baltimore,
+                  .f = ~saveRDS(.x, 
+                    file = "C:/Users/Lenovo/Documents/project1/data/bal_population.RDS"))
+}
+
+if(!file.exists(here("data","alameda_population.RDS"))){
+  alameda <- get_decennial(
+    geography = "tract",
+    variables = racevars,
+    state = '06',
+    county = '001',
+    geometry = TRUE,
+    summary_var = "P2_001N",
+    year = 2020
+  ) 
+  walk(.x = alameda,
+                  .f = ~saveRDS(.x, 
+                    file = "C:/Users/Lenovo/Documents/project1/data/alameda_population.RDS"))
+}
+
+baltimore <- readRDS(here("data","bal_population.RDS"))
+alameda <- readRDS(here("data","alameda_population.RDS"))
+```
+
+# About
+
+**Motivation and Overview**
+
+This dashboard manages to explore the difference of population in two counties that I lived in.
+
+
+**A video explaining this dashboard**
+
+# Data
+
+The population data of baltimore I used is obtained by [tidycensus API](https://walker-data.com/tidycensus/) and shown on the left. The data of berkeley city is similar on the right.
+
+***
+
+Column {.tabset}
+-------------------------------------
+
+
+### Baltimore data
+
+```{r echo=FALSE}
+renderDataTable({
+  datatable(baltimore,
+                caption = tags$caption(style = 'caption-side: Left; text-align: Left;'),
+                options = list(autoWidth = TRUE,
+                               pageLength = 10,
+                               scroller = TRUE,
+                               scrollY = '750px'))
+})
+```
+
+
+### Alameda data
+
+```{r echo=FALSE}
+renderDataTable({
+  datatable(alameda,
+                caption = tags$caption(
+                  style = 'caption-side: top; text-align: Left;'),
+                options = list(autoWidth = TRUE,
+                               pageLength = 10,
+                               scroller = TRUE,
+                               scrollY = '450px'))
+})
+```
+
+# Total population distribution
+
+
+Column {data-width=500}
+-------------------------------------
+
+### Baltimore
+```{r echo=FALSE}
+baltimore %>%
+  ggplot(aes(fill = summary_value)) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map in baltimore county")
+```
+
+
+Column {data-width=500}
+-------------------------------------
+### Alameda
+
+```{r echo=FALSE}
+alameda %>%
+  ggplot(aes(fill = summary_value)) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map in alameda county")
+```
+
+# Population distribution by race
+
+Column {.tabset}
+-------------------------------------
+
+### Baltimore
+
+```{r echo=FALSE}
+baltimore %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  ggplot(aes(fill = percent)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map by races in baltimore county")
+
+```
+
+
+### Alameda
+
+```{r echo=FALSE}
+alameda %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  ggplot(aes(fill = percent)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map by races in alameda county")
+```
+
+# Difference of population by race
+
+
+Column {.sidebar}
+-------------------------------------
+
+The races that you are interested in.
+
+```{r echo=FALSE}
+checkboxGroupInput("counties", label = "Choose counties",
+            choices = c("Asian" = "Asian",
+                        "Black" = "Black",
+                        "Hispanic" = "Hispanic",
+                        "White" = "White"),
+            selected = c("Asian", "White"))
+```
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+### Difference of population by race between and Baltimore and Alameda (Violin plot)
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(county = "baltimore")
+
+alameda_part1 <- alameda
+
+renderPlot({
+  alameda_part1 %>%
+    mutate(county = "alameda") %>%
+    bind_rows(baltimore) %>%
+    filter(variable %in% input$counties) %>%
+    ggplot(aes(x=county, y=value, fill=variable)) +
+    geom_violin() +
+    ylim(0,4500) +
+    labs(x = "city", y = "population", fill = "race",
+       title = "Violin plot of population by race")
+})
+```
+
+### Difference of population by race between and Baltimore and Alameda (Boxplot plot)
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(county = "baltimore")
+
+alameda_part2 <- alameda
+
+renderPlot({
+  alameda_part2 %>%
+    mutate(county = "alameda") %>%
+    bind_rows(baltimore) %>%
+    filter(variable %in% input$counties) %>%
+    ggplot(aes(x=county, y=value, fill=variable)) +
+    geom_boxplot() +
+    ylim(0,4500) +
+    labs(x = "city", y = "population", fill = "race",
+       title = "Boxplot of population by race")
+})
+```
+
+
+# Difference of population density by race
+
+
+Column {.sidebar}
+-------------------------------------
+
+The races that you are interested in.
+
+```{r echo=FALSE}
+checkboxGroupInput("mycounties", label = "Choose counties",
+            choices = c("Asian" = "Asian",
+                        "Black" = "Black",
+                        "Hispanic" = "Hispanic",
+                        "White" = "White"),
+            selected = c("Asian", "White"))
+```
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+### Difference of population by race between and Baltimore and Alameda (Violin plot)
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(county = "baltimore")
+
+alameda_part1 <- alameda
+
+renderPlot({
+  alameda_part1 %>%
+    mutate(county = "alameda") %>%
+    bind_rows(baltimore) %>%
+    filter(variable %in% input$mycounties) %>%
+    mutate(percent = 100 * (value / summary_value)) %>%
+    ggplot(aes(x=county, y = percent, fill=variable)) +
+    geom_violin() +
+    labs(x = "city", y = "population density", fill = "race",
+       title = "Violin plot of population density by race")
+})
+```
+
+### Difference of population by race between and Baltimore and Alameda (Boxplot plot)
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(county = "baltimore")
+
+alameda_part2 <- alameda
+
+renderPlot({
+  alameda_part2 %>%
+    mutate(county = "alameda") %>%
+    bind_rows(baltimore) %>%
+    filter(variable %in% input$mycounties) %>%
+    mutate(percent = 100 * (value / summary_value)) %>%
+    ggplot(aes(x=county, y=percent, fill=variable)) +
+    geom_boxplot() +
+    labs(x = "city", y = "population density", fill = "race",
+       title = "Boxplot of population density by race")
+})
+```
+
+# Analysis in project3
+
+Row
+-------------------------------------
+    
+### Population map
+    
+```{r echo=FALSE}
+baltimore %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  ggplot(aes(fill = percent)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map of the number of races in baltimore county", 
+       subtitle = "Baltimore has a relatively small Asian population",
+       caption = "Credit to: Yangzhenyu Gao") +
+  theme(plot.title = element_text(color = "dark blue", hjust = 0.5),
+        plot.caption = element_text(color ="blue"),
+        plot.subtitle = element_text(color = "blue"))
+
+alameda %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  ggplot(aes(fill = percent)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  theme_void() + 
+  scale_fill_viridis_c() + 
+  labs(fill = "% of population\n(2020 Census)",
+       title = "Population map of the number of races in alameda county", 
+       subtitle = "Baltimore has a relatively small Black population",
+       caption = "Credit to: Yangzhenyu Gao") +
+  theme(plot.title = element_text(color = "dark blue", hjust = 0.5),
+        plot.caption = element_text(color ="blue"),
+        plot.subtitle = element_text(color = "blue"))
+```
+
+
+Row
+-------------------------------------
+    
+### Difference of population by race 
+    
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(county = "baltimore")
+
+alameda_part3 <- alameda
+
+alameda_part3 %>%
+  mutate(county = "alameda") %>%
+  bind_rows(baltimore) %>%
+  ggplot(aes(x=county, y=value, fill=variable)) +
+  geom_violin() +
+  ylim(0,4500) +
+  labs(x = "city", y = "population", fill = "race",
+       title = "Violin plot of population", 
+       subtitle = "The population diversity of Baltimore is relatively small",
+       caption = "Credit to: Yangzhenyu Gao") +
+  theme(plot.title = element_text(color = "dark blue", hjust = 0.5),
+        plot.caption = element_text(color ="blue"),
+        plot.subtitle = element_text(color = "blue"))
+
+```
+    
+### Difference of population density by race
+
+```{r echo=FALSE}
+baltimore <- baltimore %>%
+  mutate(percent = 100 * (value / summary_value))
+
+alameda_part4 <- alameda
+
+alameda_part4 %>%
+  mutate(county = "alameda") %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  bind_rows(baltimore) %>%
+  drop_na() %>%
+  select(county,variable,percent) %>%
+  rename(density = percent) %>%
+  ggplot(aes(x=county, y=density, fill=variable)) +
+  geom_boxplot() +
+  labs(x = "city", y = "population density", fill = "race",
+       title = "Boxplot of population density", 
+       subtitle = "The population diversity of alameda is relatively big",
+       caption = "Credit to: Yangzhenyu Gao") +
+  theme(plot.title = element_text(color = "dark blue", hjust = 0.5),
+        plot.caption = element_text(color ="blue"),
+        plot.subtitle = element_text(color = "blue"))
+
+```
+
+
