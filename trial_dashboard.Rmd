@@ -35,9 +35,7 @@ if(!file.exists(here("data","bal_population.RDS"))){
     summary_var = "P2_001N",
     year = 2020
   )
-  walk(.x = baltimore,
-                  .f = ~saveRDS(.x, 
-                    file = "C:/Users/Lenovo/Documents/project1/data/bal_population.RDS"))
+  saveRDS(baltimore, file = here("data","bal_population.RDS"))
 }
 
 if(!file.exists(here("data","alameda_population.RDS"))){
@@ -50,9 +48,7 @@ if(!file.exists(here("data","alameda_population.RDS"))){
     summary_var = "P2_001N",
     year = 2020
   ) 
-  walk(.x = alameda,
-                  .f = ~saveRDS(.x, 
-                    file = "C:/Users/Lenovo/Documents/project1/data/alameda_population.RDS"))
+  saveRDS(alameda, file = here("data","alameda_population.RDS"))
 }
 
 baltimore <- readRDS(here("data","bal_population.RDS"))
@@ -66,7 +62,17 @@ alameda <- readRDS(here("data","alameda_population.RDS"))
 This dashboard manages to explore the difference of population in two counties that I lived in.
 
 
-**A video explaining this dashboard**
+**A video introducing my dashboard**
+
+<iframe
+    width="640"
+    height="480"
+    src="https://www.youtube.com/embed/zBaINH7YVjQ"
+    frameborder="0"
+    allow="autoplay; encrypted-media"
+    allowfullscreen
+>
+</iframe>
 
 # Data
 
@@ -182,7 +188,7 @@ Column {.sidebar}
 The races that you are interested in.
 
 ```{r echo=FALSE}
-checkboxGroupInput("counties", label = "Choose counties",
+checkboxGroupInput("counties", label = "Choose races",
             choices = c("Asian" = "Asian",
                         "Black" = "Black",
                         "Hispanic" = "Hispanic",
@@ -213,7 +219,7 @@ renderPlot({
 })
 ```
 
-### Difference of population by race between and Baltimore and Alameda (Boxplot plot)
+### Difference of population by race between and Baltimore and Alameda (Box plot)
 ```{r echo=FALSE}
 baltimore <- baltimore %>%
   mutate(county = "baltimore")
@@ -243,7 +249,7 @@ Column {.sidebar}
 The races that you are interested in.
 
 ```{r echo=FALSE}
-checkboxGroupInput("mycounties", label = "Choose counties",
+checkboxGroupInput("mycounties", label = "Choose races",
             choices = c("Asian" = "Asian",
                         "Black" = "Black",
                         "Hispanic" = "Hispanic",
@@ -274,7 +280,7 @@ renderPlot({
 })
 ```
 
-### Difference of population by race between and Baltimore and Alameda (Boxplot plot)
+### Difference of population by race between and Baltimore and Alameda (Box plot)
 ```{r echo=FALSE}
 baltimore <- baltimore %>%
   mutate(county = "baltimore")
