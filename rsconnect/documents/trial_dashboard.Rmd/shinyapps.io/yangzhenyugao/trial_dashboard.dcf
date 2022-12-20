@@ -1,0 +1,13 @@
+name: trial_dashboard
+title: trial_dashboard
+username:
+account: yangzhenyugao
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7911064
+bundleId: 6649671
+url: https://yangzhenyugao.shinyapps.io/trial_dashboard/
+when: 1671334860.52532
+lastSyncTime: 1671334860.52533
+asMultiple: FALSE
+asStatic: FALSE
